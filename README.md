@@ -27,9 +27,9 @@ The combined BPS accepts the exact **clean Metroid (USA), PRG0, NES 2.0** dump l
 | --- | --- | --- | --- |
 | **Clean Metroid (USA), PRG0, NES 2.0** — patch input | `88ad02b0b53012712f3c773a62073847551cec191aeda5d3ec19b22b594640eb` | `2080059bea4563ffff7535e6c0a0f3bc2f34b194` | `D1A02CAB` |
 | **Metroid (USA) + lag-fix 1.0, NES 2.0** — builder reference | `a0c8084976174e55546f3af46b1c57e850a04eaf618ff288ee9e9d69608b1ead` | `8fe5cc20fb61791d605cc48fad7ff5c207e69e92` | `14FF0475` |
-| **Metroid (USA) - Combined Performance Preview.nes** — patched output | `c1aac71583c70d8104dcb2b10f3e3671b0d9ce1a57a51f2be268929ebdc3fca9` | `08132a9db5ca7716cce0ab2e1f4b4a478e0594e4` | `7AC82547` |
+| **Metroid (USA) - Combined Performance Preview.nes** — patched output | `a4b6ccd53677de9f42ba87dae574bd60af362b921c61e0779f1449c3b118a177` | `a14de5403036a48b109634192a13913753fb591b` | `938794B6` |
 
-The clean dump's header is `4e45531a080010080000070700000001`. Its PRG-only SHA-1 is `fdbfc7871962f72a1ef57e5a7e456164fb93430b`, which covers a different byte range from the whole-file hashes above. The combined BPS SHA-256 is `b4fa17e6ad0fcffa86cf69b672440730847fa65962109fcd2d4a3a976b0bdb4f`.
+The clean dump's header is `4e45531a080010080000070700000001`. Its PRG-only SHA-1 is `fdbfc7871962f72a1ef57e5a7e456164fb93430b`, which covers a different byte range from the whole-file hashes above. The combined BPS SHA-256 is `aef9da2d3e858c29606942430ff123c180d894a675cc3b99cc75b2f24a0ab8af`.
 
 ## Apply the combined BPS
 
@@ -94,7 +94,7 @@ At the **START / CONTINUE** menu, hold **Select** and press the slot button. Hol
 | Load checkpoint or start a fresh game if empty | Select + A | Select + B |
 | Clear slot and stay at the menu | Select + Up + A | Select + Up + B |
 
-A slot becomes active when you load it or start from it. **START** and manual **CONTINUE** default to slot A after boot. On death, the active slot receives the password displayed on the game-over screen. Saves restore the same area checkpoint and progression as a manual password. A fresh start has the original starting resources. The emulator or flash cart must persist battery RAM between sessions. On an original NES cartridge, this requires battery-backed hardware.
+A slot becomes active when you load it or start from it. **START** begins a fresh game without a slot. Manual **CONTINUE** loads the entered password without a slot. A death in either mode displays the usual password without writing to cartridge save data. On death, the active slot receives the password displayed on the game-over screen. Saves restore the same area checkpoint and progression as a manual password. A fresh start has the original starting resources. The emulator or flash cart must persist battery RAM between sessions. On an original NES cartridge, this requires battery-backed hardware.
 
 ### Test the save slots on Batocera
 
