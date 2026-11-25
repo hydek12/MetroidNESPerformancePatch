@@ -8,6 +8,7 @@ import struct
 import zlib
 from itertools import groupby
 
+from gameplay import apply_gameplay
 from room_fill import optimize_room_fill, reuse_metatile_plan
 
 
@@ -102,6 +103,7 @@ def main():
         target = apply_edits(base, (TOURIAN_BRANCH,) + NMI_EDITS)
         optimize_room_fill(source, target)
         reuse_metatile_plan(source, target)
+        apply_gameplay(target)
         with args.output.open("xb") as handle:
             handle.write(encode_bps(source, target))
     except (OSError, ValueError) as error:
