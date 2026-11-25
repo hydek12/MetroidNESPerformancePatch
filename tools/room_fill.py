@@ -102,3 +102,23 @@ def optimize_room_fill(clean_rom, target):
     # instructions after that redirect, then jump into the appropriate fill.
     replace(target, 7, 0xEA42, bytes.fromhex("A8 B1 3B 85 33 C8 B1 3B 85 34 A0 00"),
                              bytes.fromhex("AE F4 6F 4C 2F 77 AE F4 6F 4C 1A 76"))
+
+
+def reuse_metatile_plan(clean_rom, target):
+    """Reuse immutable tile lookup operands prepared by the previous draw."""
+    sources = {area_word(clean_rom, bank, ROOM_POINTERS + 4) for bank in range(1, 6)}
+    if len(sources) != 5 or 0xFFFF in sources:
+        raise ValueError("Metatile source pointers must distinguish all five areas")
+
+    # Graphics loading initializes the work-RAM operands to $FFFF. The
+    # native rebuild writes all four together, so comparing T0's full
+    # pointer also checks the area for the three derived table pointers.
+    # A hit skips to the original room-palette setup. On a miss, replay
+    # the three displaced instructions and let the original rebuild run.
+    replace(target, 7, 0xCA85, bytes.fromhex("A6 23 A5 3F 8D 30 76"),
+                             bytes.fromhex("4C F8 EF EA EA EA EA"))
+    # Free fixed-bank bytes from the original fill routine. Preserve the
+    # game's call stack by jumping back into the original room drawer.
+    replace(target, 7, 0xEFF8,
+            bytes.fromhex("A5 3A A8 AA C8 C8 C8 A9 FF 20 1C F0 A6 01 20 93 E1 86 01 A6 68 BD 18 F0 A0 C0 91"),
+            bytes.fromhex("A5 3F CD 30 76 D0 0A A5 40 CD 31 76 D0 03 4C BF CA A6 23 A5 3F 8D 30 76 4C 8C CA"))

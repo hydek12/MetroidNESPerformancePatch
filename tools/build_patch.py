@@ -8,7 +8,7 @@ import struct
 import zlib
 from itertools import groupby
 
-from room_fill import optimize_room_fill
+from room_fill import optimize_room_fill, reuse_metatile_plan
 
 
 CLEAN_SHA256 = "88ad02b0b53012712f3c773a62073847551cec191aeda5d3ec19b22b594640eb"
@@ -101,7 +101,14 @@ def main():
         action="store_true",
         help="include the room-buffer initialization optimization",
     )
+    parser.add_argument(
+        "--prefetch-metatiles",
+        action="store_true",
+        help="reuse the metatile lookup plan already prepared by a room draw",
+    )
     args = parser.parse_args()
+    if args.prefetch_metatiles and not args.room_fill:
+        parser.error("--prefetch-metatiles requires --room-fill")
     if args.room_fill and not args.nmi_timing:
         parser.error("--room-fill requires --nmi-timing")
     if args.nmi_timing and not args.lag_fix_rom:
@@ -114,6 +121,8 @@ def main():
         target = apply_edits(base, edits)
         if args.room_fill:
             optimize_room_fill(source, target)
+        if args.prefetch_metatiles:
+            reuse_metatile_plan(source, target)
         with args.output.open("xb") as handle:
             handle.write(encode_bps(source, target))
     except (OSError, ValueError) as error:
