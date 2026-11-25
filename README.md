@@ -1,6 +1,6 @@
 # Metroid NES performance patch
 
-Development workspace for a BPS patch targeting Metroid (USA) on the stock 128 KiB MMC1 cartridge configuration. The project starts with a read-only ROM fingerprinting tool. Keep game dumps, emulator states, and benchmark captures under the ignored `local/` directory.
+Development workspace for a BPS patch targeting Metroid (USA) on a 128 KiB MMC1 configuration with 8 KiB of battery-backed PRG RAM. The project starts with a read-only ROM fingerprinting tool. Keep game dumps, emulator states, and benchmark captures under the ignored `local/` directory.
 
 ## What the patch changes
 
@@ -13,6 +13,9 @@ All of these changes are enabled in the combined BPS.
 | **Faster room initialization** | Loads the attribute fill value once and skips an extra 64-byte band in 68 rooms where later drawing overwrites that whole band. |
 | **Metatile lookup reuse** | Reuses the four tile-table addresses prepared by the preceding room draw when the source matches. Rebuilds them when the graphics or area changes. |
 | **NARPAS SWORD Tourian freeze fix** | Discards a missile drop when missile capacity is zero, avoiding the original retry loop. Valid missile drops and the debug code’s benefits are preserved. |
+| **Battery-backed password saves** | Stores the active slot’s native checkpoint password on death. The title screen loads or clears either slot independently. |
+| **Password refills** | Fills all earned energy tanks and restores missiles to capacity after an ordinary password or save load. |
+| **Renewable tube drops** | Lets a tube-generated enemy drop energy even after the room cap is reached. The pickup still occupies that tube’s enemy slot until collected or expired. |
 
 JUSTIN BAILEY still starts with 255 missiles. Room crossings can still miss updates. The patch prepares lookup metadata, while staging a complete room ahead of a crossing remains future work.
 
@@ -24,9 +27,9 @@ The combined BPS accepts the exact **clean Metroid (USA), PRG0, NES 2.0** dump l
 | --- | --- | --- | --- |
 | **Clean Metroid (USA), PRG0, NES 2.0** — patch input | `88ad02b0b53012712f3c773a62073847551cec191aeda5d3ec19b22b594640eb` | `2080059bea4563ffff7535e6c0a0f3bc2f34b194` | `D1A02CAB` |
 | **Metroid (USA) + lag-fix 1.0, NES 2.0** — builder reference | `a0c8084976174e55546f3af46b1c57e850a04eaf618ff288ee9e9d69608b1ead` | `8fe5cc20fb61791d605cc48fad7ff5c207e69e92` | `14FF0475` |
-| **Metroid (USA) - Combined Performance Preview.nes** — patched output | `46964c00c87162302b4cbb3888caa3b66c5a1318237e207d8c16ae211295d54c` | `cb969559d6567ba9cdcf7b1504105df4ec429ac8` | `7FAE7C3E` |
+| **Metroid (USA) - Combined Performance Preview.nes** — patched output | `c1aac71583c70d8104dcb2b10f3e3671b0d9ce1a57a51f2be268929ebdc3fca9` | `08132a9db5ca7716cce0ab2e1f4b4a478e0594e4` | `7AC82547` |
 
-The clean dump's header is `4e45531a080010080000070700000001`. Its PRG-only SHA-1 is `fdbfc7871962f72a1ef57e5a7e456164fb93430b`, which covers a different byte range from the whole-file hashes above. The combined BPS SHA-256 is `8b598da62e821f2b1ab5cf0b67cbf25eba8f53a98f3f0a5b36872ec80076136b`.
+The clean dump's header is `4e45531a080010080000070700000001`. Its PRG-only SHA-1 is `fdbfc7871962f72a1ef57e5a7e456164fb93430b`, which covers a different byte range from the whole-file hashes above. The combined BPS SHA-256 is `b4fa17e6ad0fcffa86cf69b672440730847fa65962109fcd2d4a3a976b0bdb4f`.
 
 ## Apply the combined BPS
 
@@ -81,6 +84,43 @@ In debugger-triggered native FCEUmm tests of all 193 rooms in both destination b
 Each native room draw prepares four tile-table operands in work RAM. The next room in the same area can reuse those operands. Comparing the full immutable source pointer guards the shortcut, and graphics reloads reset the operands and force the original rebuild. This adds no work during ordinary movement and does not write a future room into a live buffer.
 
 FCEUmm matched all 386 room-buffer, exit-register, and compared scratch cases against the room-fill build. Reusing a prepared plan saved 53 cycles per isolated room draw and 74 cycles in the setup portion of each profiled late update. The Brinstar, vertical, and sustained Ridley replays matched all 2,150 rendered updates and still had 2, 1, and 5 missed updates. This prepares lookup metadata on the cartridge. Staging a complete destination buffer ahead of a crossing is still required for the zero-lag goal.
+
+## Cartridge saves
+
+At the **START / CONTINUE** menu, hold **Select** and press the slot button. Hold **Select + Up** before pressing the slot button to erase that slot.
+
+| Action | Slot A | Slot B |
+| --- | --- | --- |
+| Load checkpoint or start a fresh game if empty | Select + A | Select + B |
+| Clear slot and stay at the menu | Select + Up + A | Select + Up + B |
+
+A slot becomes active when you load it or start from it. **START** and manual **CONTINUE** default to slot A after boot. On death, the active slot receives the password displayed on the game-over screen. Saves restore the same area checkpoint and progression as a manual password. A fresh start has the original starting resources. The emulator or flash cart must persist battery RAM between sessions. On an original NES cartridge, this requires battery-backed hardware.
+
+### Test the save slots on Batocera
+
+1. Copy the patched `.nes` file to `/userdata/roms/nes` and launch it with the FCEUmm core. [Batocera NES setup](https://wiki.batocera.org/systems:nes)
+2. Give Batocera's Hotkey its own button if it currently shares Select. Use the controller buttons mapped to **NES A** and **NES B** for the slot combos. [Batocera hotkey shortcuts](https://wiki.batocera.org/basic_commands)
+3. Start from slot A, make some progress, and let Samus die. Once the password is displayed, exit to the Batocera menu using Hotkey + Start. Relaunch the same ROM and load slot A. Repeat for slot B with different progress so you can tell the saves apart.
+4. Clear one slot at the title menu, then exit and relaunch. The cleared slot should start fresh, and the other slot should still load its saved progress.
+
+This procedure tests the game's battery-backed slots. Begin each check from a fresh launch and keep the ROM filename the same throughout.
+
+### Gameplay verification
+
+FCEUmm stored and reloaded both slots through its libretro save-RAM interface in separate processes. Both records came from the native death flow, and the displayed passwords matched the stored characters. Slot B used debugger-staged progression for a distinct test checkpoint. The tests covered independent erasure, fresh starts from cleared slots, corrupt character rejection, a manual password with an energy tank and 150 missile capacity, and loading the two built-in passwords.
+
+A debugger-assisted Brinstar test entered a room with a native tube, saturated its energy counter, and positioned Samus to fire and collect. Over 1,500 frames the prior patch yielded zero energy pickups and this build yielded 12. The test stayed in the room throughout and both builds had zero missed updates there.
+
+| FCEUmm replay | Prior patch missed updates | Gameplay candidate missed updates |
+| --- | ---: | ---: |
+| Brinstar horizontal | 2 | 2 |
+| Ridley-area vertical | 1 | 1 |
+| Sustained Kraid | 0 | 0 |
+| Sustained Ridley | 5 | 5 |
+
+The boss and vertical tests used matched starting resources to isolate timing from the refill. All 3,350 accepted frames matched the prior patch pixel for pixel. Neither build registered NMI video writes outside VBlank on these routes. The QuickNES Tourian replay used a transferred checkpoint with the new work-RAM routines initialized.
+
+On Batocera, the project owner confirmed that both slots reloaded after exiting to the menu and relaunching the game. They also confirmed that both clear combinations worked and that loading a save restored Samus's full energy. Flash-cart hardware remains untested.
 
 ## Milestones
 
