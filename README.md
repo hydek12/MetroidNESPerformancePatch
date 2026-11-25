@@ -57,6 +57,14 @@ The room drawer loads the attribute fill value once per room and reuses it acros
 
 In debugger-triggered native FCEUmm tests of all 193 rooms in both destination buffers, all 386 room images, exit registers, and compared scratch values matched the prior timing build. Measured room construction was 117–501 CPU cycles faster per case. The Brinstar, Ridley-area vertical, and sustained Ridley gameplay replays retained 2, 1, and 5 missed updates respectively. All 2,150 accepted rendered frames matched. The host-assisted prefetch result remains the larger opportunity for the zero-lag target.
 
+## On-ROM metatile lookup preparation
+
+Add `--prefetch-metatiles` to the `--nmi-timing --room-fill` build. Each native room draw prepares four tile-table operands in work RAM. The next room in the same area can reuse those operands. Comparing the full immutable source pointer guards the shortcut, and graphics reloads reset the operands and force the original rebuild. This adds no work during ordinary movement and does not write a future room into a live buffer.
+
+The patched ROM SHA-256 is `46964c00c87162302b4cbb3888caa3b66c5a1318237e207d8c16ae211295d54c`. Omitting the flag reproduces the previous room-fill BPS byte for byte.
+
+FCEUmm matched all 386 room-buffer, exit-register, and compared scratch cases against the room-fill build. Reusing a prepared plan saved 53 cycles per isolated room draw and 74 cycles in the setup portion of each profiled late update. The Brinstar, vertical, and sustained Ridley replays matched all 2,150 rendered updates and still had 2, 1, and 5 missed updates. This prepares lookup metadata on the cartridge. Staging a complete destination buffer ahead of a crossing is still required for the zero-lag goal.
+
 ## Milestones
 
 - [x] Compare the clean ROM with metroid-lag-fix 1.0 using a Kraid replay, one room transition, and a scrolling flip. Record CPU cycles, missed updates, and the relative motion of Samus and the background.
