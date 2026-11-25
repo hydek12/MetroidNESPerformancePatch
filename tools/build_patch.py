@@ -11,10 +11,26 @@ from itertools import groupby
 
 CLEAN_SHA256 = "88ad02b0b53012712f3c773a62073847551cec191aeda5d3ec19b22b594640eb"
 LAG_FIX_SHA256 = "a0c8084976174e55546f3af46b1c57e850a04eaf618ff288ee9e9d69608b1ead"
-# Fixed 16 KiB PRG bank 7, mapped at $C000-$FFFF after the 16-byte header.
-BRANCH_OFFSET = 16 + 7 * 0x4000 + (0xDD46 - 0xC000)
-ORIGINAL_BRANCH = bytes((0xF0, 0x13))  # BEQ $DD5B (reroll in Tourian)
-FIXED_BRANCH = bytes((0xF0, 0x1B))     # BEQ $DD63 (discard enemy object)
+# The 16-byte header precedes eight 16 KiB PRG banks. Bank 7 is fixed at $C000.
+FIXED_BANK_FILE_BIAS = 16 + 7 * 0x4000 - 0xC000
+TOURIAN_BRANCH = (
+    0xDD46, bytes.fromhex("F0 13"), bytes.fromhex("F0 1B")
+)  # BEQ native enemy cleanup at $DD63 when missile capacity is zero.
+
+NMI_EDITS = (
+    # Check the main-loop completion flag before sprite DMA. The existing
+    # late-frame branch still runs the sound engine and age update.
+    (0xC0DF, bytes.fromhex("A9 00 8D 03 20 A9 02 8D 14 40 A5 1A D0 16"),
+             bytes.fromhex("A5 1A D0 20 A9 00 8D 03 20 A9 02 8D 14 40")),
+    # Branch on the string's mode once. Literals loop over INY/LDA/STA/DEX
+    # and fall through to the original string tail at $C308.
+    (0xC2FA, bytes.fromhex("90 01 C8 B0 01 C8 B1 00 8D 07 20 CA D0 F5"),
+             bytes.fromhex("90 03 4C 3D E0 C8 B1 00 8D 07 20 CA D0 F7")),
+    # Lag-fix 1.0 relocated the old sprite code here. The preceding stub
+    # at $E038 ends in a JMP. RLE reads its value once and joins $C308.
+    (0xE03D, bytes.fromhex("C0 05 6B 85 05 A5 6B 09 80 85 6B 60"),
+             bytes.fromhex("C8 B1 00 8D 07 20 CA D0 FA 4C 08 C3")),
+)
 
 
 def read_verified(path, expected_hash):
@@ -25,11 +41,15 @@ def read_verified(path, expected_hash):
     return data
 
 
-def fix_drop_branch(rom):
-    end = BRANCH_OFFSET + len(ORIGINAL_BRANCH)
-    if rom[BRANCH_OFFSET:end] != ORIGINAL_BRANCH:
-        raise ValueError("Expected the original missile-capacity branch at $DD46")
-    return rom[:BRANCH_OFFSET] + FIXED_BRANCH + rom[end:]
+def apply_edits(rom, edits):
+    target = bytearray(rom)
+    for address, original, replacement in edits:
+        offset = FIXED_BANK_FILE_BIAS + address
+        end = offset + len(original)
+        if len(original) != len(replacement) or target[offset:end] != original:
+            raise ValueError(f"Unexpected edit layout at CPU ${address:04X}")
+        target[offset:end] = replacement
+    return target
 
 
 def bps_number(value):
@@ -69,12 +89,20 @@ def main():
     parser.add_argument(
         "--lag-fix-rom", type=Path, help="local ROM with upstream lag-fix 1.0 already applied"
     )
+    parser.add_argument(
+        "--nmi-timing",
+        action="store_true",
+        help="include the experimental NMI and PPU writer timing changes",
+    )
     args = parser.parse_args()
+    if args.nmi_timing and not args.lag_fix_rom:
+        parser.error("--nmi-timing requires --lag-fix-rom")
 
     try:
         source = read_verified(args.clean_rom, CLEAN_SHA256)
         base = read_verified(args.lag_fix_rom, LAG_FIX_SHA256) if args.lag_fix_rom else source
-        target = fix_drop_branch(base)
+        edits = (TOURIAN_BRANCH,) + NMI_EDITS if args.nmi_timing else (TOURIAN_BRANCH,)
+        target = apply_edits(base, edits)
         with args.output.open("xb") as handle:
             handle.write(encode_bps(source, target))
     except (OSError, ValueError) as error:
