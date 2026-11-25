@@ -2,34 +2,58 @@
 
 Development workspace for a BPS patch targeting Metroid (USA) on the stock 128 KiB MMC1 cartridge configuration. The project starts with a read-only ROM fingerprinting tool. Keep game dumps, emulator states, and benchmark captures under the ignored `local/` directory.
 
-## Build and run
+## What the patch changes
 
-Open `MetroidPerformancePatch.xcodeproj` in Xcode and choose the shared `metroid-rom-info` scheme. To build and fingerprint a file from the terminal:
+All of these changes are enabled in the combined BPS.
+
+| Change | In-game effect |
+| --- | --- |
+| **Lag-fix 1.0 performance base**, by jslepicka | Reduces CPU work in room loading, sprite drawing, collision checks, and the sound engine on the original 128 KiB MMC1 configuration. |
+| **VBlank and NMI timing** | Holds the previous sprites and background scroll together when the main loop misses its deadline. The PPU writer also handles each literal or repeated-byte block with one mode check. |
+| **Faster room initialization** | Loads the attribute fill value once and skips an extra 64-byte band in 68 rooms where later drawing overwrites that whole band. |
+| **Metatile lookup reuse** | Reuses the four tile-table addresses prepared by the preceding room draw when the source matches. Rebuilds them when the graphics or area changes. |
+| **NARPAS SWORD Tourian freeze fix** | Discards a missile drop when missile capacity is zero, avoiding the original retry loop. Valid missile drops and the debug code’s benefits are preserved. |
+
+JUSTIN BAILEY still starts with 255 missiles. Room crossings can still miss updates. The patch prepares lookup metadata, while staging a complete room ahead of a crossing remains future work.
+
+## Compatible ROM and file hashes
+
+The combined BPS accepts the exact **clean Metroid (USA), PRG0, NES 2.0** dump listed below. Hash the full extracted `.nes` file, including its 16-byte header. The clean dump is **131,088 bytes**. The older iNES-header dump, other regions, headerless dumps, and already-patched ROMs have different source checksums.
+
+| File | SHA-256 (whole file) | SHA-1 (whole file) | CRC32 (whole file) |
+| --- | --- | --- | --- |
+| **Clean Metroid (USA), PRG0, NES 2.0** — patch input | `88ad02b0b53012712f3c773a62073847551cec191aeda5d3ec19b22b594640eb` | `2080059bea4563ffff7535e6c0a0f3bc2f34b194` | `D1A02CAB` |
+| **Metroid (USA) + lag-fix 1.0, NES 2.0** — builder reference | `a0c8084976174e55546f3af46b1c57e850a04eaf618ff288ee9e9d69608b1ead` | `8fe5cc20fb61791d605cc48fad7ff5c207e69e92` | `14FF0475` |
+| **Metroid (USA) - Combined Performance Preview.nes** — patched output | `46964c00c87162302b4cbb3888caa3b66c5a1318237e207d8c16ae211295d54c` | `cb969559d6567ba9cdcf7b1504105df4ec429ac8` | `7FAE7C3E` |
+
+The clean dump's header is `4e45531a080010080000070700000001`. Its PRG-only SHA-1 is `fdbfc7871962f72a1ef57e5a7e456164fb93430b`, which covers a different byte range from the whole-file hashes above. The combined BPS SHA-256 is `8b598da62e821f2b1ab5cf0b67cbf25eba8f53a98f3f0a5b36872ec80076136b`.
+
+## Apply the combined BPS
+
+1. Extract your clean ROM if it is in an archive. Keep the original dump as a backup.
+2. Compute the clean ROM's SHA-256 and compare it with the **patch input** row.
+3. In a BPS-compatible patcher, choose the clean `.nes` as the source and `metroid-combined.bps` as the patch. Save the result as `Metroid (USA) - Combined Performance Preview.nes`. The combined patch goes on the clean dump in one application.
+4. Compute the output's SHA-256 and compare it with the **patched output** row before launching it in an NES emulator. If the patcher reports a source checksum mismatch, check the extracted file and header against the **patch input** row.
+
+On macOS, run these checks from the folder containing your files:
 
 ```sh
-xcodebuild -project MetroidPerformancePatch.xcodeproj -scheme metroid-rom-info -derivedDataPath DerivedData build
-DerivedData/Build/Products/Debug/metroid-rom-info local/metroid-usa.nes
+shasum -a 256 metroid-usa.nes metroid-combined.bps
+shasum -a 256 'Metroid (USA) - Combined Performance Preview.nes'
 ```
 
-The SHA-256 covers the entire file, including its header. Record the exact hash, header format, emulator version, patch revision, and input replay with each benchmark.
+On Linux, use `sha256sum` in place of `shasum -a 256`. In Windows PowerShell, use `Get-FileHash -Algorithm SHA256 -LiteralPath 'file.nes'`.
 
-## Build and apply the combined patch
+## Rebuild the BPS from source
 
-To reproduce the BPS, first apply [jslepicka's lag-fix 1.0 NES 2.0 BPS](https://github.com/jslepicka/metroid-lag-fix/tree/e9f7927d2b5abe922db81151ad86149dcb633168) to a separate local copy of the clean Metroid (USA) dump. The builder checks both input hashes and refuses to overwrite an existing output.
+Apply [jslepicka’s lag-fix 1.0 NES 2.0 BPS](https://github.com/jslepicka/metroid-lag-fix/tree/e9f7927d2b5abe922db81151ad86149dcb633168) to a separate copy of the clean ROM to create the **builder reference** above. Then run the builder with both files. It verifies both hashes and requires a fresh output path.
 
 ```sh
 python3 tools/build_patch.py local/metroid-usa.nes local/metroid-combined.bps \
   --lag-fix-rom local/metroid-lag-fix.nes
 ```
 
-Apply the resulting BPS directly to the **clean NES 2.0 ROM**. The BPS includes lag-fix 1.0, the VBlank and NMI timing changes, faster room fills, reuse of prepared metatile lookups, and the NARPAS SWORD Tourian freeze fix. Every change is built in and always active. The earlier feature flags and freeze-only build path have been retired.
-
-| File | SHA-256 |
-| --- | --- |
-| Combined BPS | `8b598da62e821f2b1ab5cf0b67cbf25eba8f53a98f3f0a5b36872ec80076136b` |
-| Patched NES ROM | `46964c00c87162302b4cbb3888caa3b66c5a1318237e207d8c16ae211295d54c` |
-
-The Tourian fix changes the relative branch operand at CPU address `$DD47`. If a missile drop fails the zero-capacity check at `$DD46`, the branch uses the existing enemy cleanup path at `$DD63` instead of retrying the same Tourian drop indefinitely. Eligible missile drops retain the original path.
+Keep ROM dumps and generated output under the ignored `local/` directory. For the optional Xcode fingerprinting tool, open `MetroidPerformancePatch.xcodeproj`, build the `metroid-rom-info` scheme, and pass it the extracted `.nes` file. Its SHA-256 covers the full file.
 
 ## VBlank and NMI timing
 
