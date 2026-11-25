@@ -94,14 +94,17 @@ At the **START / CONTINUE** menu, hold **Select** and press the slot button. Hol
 | Load checkpoint or start a fresh game if empty | Select + A | Select + B |
 | Clear slot and stay at the menu | Select + Up + A | Select + Up + B |
 
-A slot becomes active when you load it or start from it. **START** begins a fresh game without a slot. Manual **CONTINUE** loads the entered password without a slot. A death in either mode displays the usual password without writing to cartridge save data. On death, the active slot receives the password displayed on the game-over screen. Saves restore the same area checkpoint and progression as a manual password. A fresh start has the original starting resources. The emulator or flash cart must persist battery RAM between sessions. On an original NES cartridge, this requires battery-backed hardware.
+Choose **START** for a fresh game with the original starting resources and no save slot selected. Choose **CONTINUE** to enter a password and resume without a save slot. In either mode, death displays the usual password and leaves both cartridge saves intact.
+
+Use **Select + A** or **Select + B** to make a slot active. When Samus dies, the game writes the displayed password to that slot. The password restores the area checkpoint and progression. The emulator or flash cart must persist battery RAM between sessions. An original NES cartridge requires battery-backed hardware.
 
 ### Test the save slots on Batocera
 
 1. Copy the patched `.nes` file to `/userdata/roms/nes` and launch it with the FCEUmm core. [Batocera NES setup](https://wiki.batocera.org/systems:nes)
 2. Give Batocera's Hotkey its own button if it currently shares Select. Use the controller buttons mapped to **NES A** and **NES B** for the slot combos. [Batocera hotkey shortcuts](https://wiki.batocera.org/basic_commands)
 3. Start from slot A, make some progress, and let Samus die. Once the password is displayed, exit to the Batocera menu using Hotkey + Start. Relaunch the same ROM and load slot A. Repeat for slot B with different progress so you can tell the saves apart.
-4. Clear one slot at the title menu, then exit and relaunch. The cleared slot should start fresh, and the other slot should still load its saved progress.
+4. With both slots populated, relaunch and choose **START**. Check that Samus starts from the beginning with the original resources. Let Samus die and check that the password appears. Exit and relaunch, then load each slot to verify its previous checkpoint still loads.
+5. Clear one slot at the title menu, then exit and relaunch. The cleared slot should start fresh, and the other slot should still load its saved progress.
 
 This procedure tests the game's battery-backed slots. Begin each check from a fresh launch and keep the ROM filename the same throughout.
 
@@ -120,7 +123,7 @@ A debugger-assisted Brinstar test entered a room with a native tube, saturated i
 
 The boss and vertical tests used matched starting resources to isolate timing from the refill. All 3,350 accepted frames matched the prior patch pixel for pixel. Neither build registered NMI video writes outside VBlank on these routes. The QuickNES Tourian replay used a transferred checkpoint with the new work-RAM routines initialized.
 
-On Batocera, the project owner confirmed that both slots reloaded after exiting to the menu and relaunching the game. They also confirmed that both clear combinations worked and that loading a save restored Samus's full energy. Flash-cart hardware remains untested.
+On Batocera, the project owner confirmed that both slots reloaded after exiting to the menu and relaunching the game. They also confirmed that both clear combinations worked and that loading a save restored Samus's full energy. FCEUmm verified that dying after a normal **START** or manual **CONTINUE** left both save records byte-for-byte identical. The normal **START** change still needs a Batocera check. Flash-cart hardware remains untested.
 
 ## Milestones
 
