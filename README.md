@@ -118,7 +118,9 @@ A debugger-assisted Brinstar test entered a room with a native tube, saturated i
 | Sustained Kraid | 0 | 0 |
 | Sustained Ridley | 5 | 5 |
 
-The boss and vertical tests used matched starting resources to isolate timing from the refill. All 3,350 accepted frames matched the prior patch pixel for pixel. Neither build registered NMI video writes outside VBlank on these routes. The QuickNES Tourian replay used a transferred checkpoint with the new work-RAM routines initialized. Batocera frontend persistence and flash-cart hardware remain untested.
+The boss and vertical tests used matched starting resources to isolate timing from the refill. All 3,350 accepted frames matched the prior patch pixel for pixel. Neither build registered NMI video writes outside VBlank on these routes. The QuickNES Tourian replay used a transferred checkpoint with the new work-RAM routines initialized.
+
+On Batocera, the project owner confirmed that both slots reloaded after exiting to the menu and relaunching the game. They also confirmed that both clear combinations worked and that loading a save restored Samus's full energy. Flash-cart hardware remains untested.
 
 ## Milestones
 
