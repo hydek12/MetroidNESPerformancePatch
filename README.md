@@ -49,6 +49,14 @@ FCEUmm measured the margin from the last NMI PPU write or sprite DMA completion 
 
 The four routes matched all 3,350 rendered frames at accepted updates. In the first build six missed frames transferred changed sprite data while the background scroll stayed held. The timing build held the previous rendered frame on all eight misses. The zero-lag target remains open for the three replays that still miss updates. The return addresses pushed by late NMIs include room-building code in work RAM and a sprite placement loop during sustained Ridley combat.
 
+## Experimental room-transition build
+
+Add `--room-fill` with `--nmi-timing` to include the room-buffer initialization changes. The patched ROM SHA-256 is `16261bd1f530baccc6797aae2edf93e210dfaad4794212911b23abb20f555534`. Builds without `--room-fill` keep their existing output hashes.
+
+The room drawer loads the attribute fill value once per room and reuses it across the fill loop. The tile stores are reordered so 68 rooms can skip one additional 64-byte band that the room structures fully overwrite. Across all 193 rooms, no room adds fill stores. The builder derives the skip table from the clean room structures and verifies the previous table and both fill templates before editing.
+
+In debugger-triggered native FCEUmm tests of all 193 rooms in both destination buffers, all 386 room images, exit registers, and compared scratch values matched the prior timing build. Measured room construction was 117–501 CPU cycles faster per case. The Brinstar, Ridley-area vertical, and sustained Ridley gameplay replays retained 2, 1, and 5 missed updates respectively. All 2,150 accepted rendered frames matched. The host-assisted prefetch result remains the larger opportunity for the zero-lag target.
+
 ## Milestones
 
 - [x] Compare the clean ROM with metroid-lag-fix 1.0 using a Kraid replay, one room transition, and a scrolling flip. Record CPU cycles, missed updates, and the relative motion of Samus and the background.

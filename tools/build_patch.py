@@ -8,6 +8,8 @@ import struct
 import zlib
 from itertools import groupby
 
+from room_fill import optimize_room_fill
+
 
 CLEAN_SHA256 = "88ad02b0b53012712f3c773a62073847551cec191aeda5d3ec19b22b594640eb"
 LAG_FIX_SHA256 = "a0c8084976174e55546f3af46b1c57e850a04eaf618ff288ee9e9d69608b1ead"
@@ -94,7 +96,14 @@ def main():
         action="store_true",
         help="include the experimental NMI and PPU writer timing changes",
     )
+    parser.add_argument(
+        "--room-fill",
+        action="store_true",
+        help="include the room-buffer initialization optimization",
+    )
     args = parser.parse_args()
+    if args.room_fill and not args.nmi_timing:
+        parser.error("--room-fill requires --nmi-timing")
     if args.nmi_timing and not args.lag_fix_rom:
         parser.error("--nmi-timing requires --lag-fix-rom")
 
@@ -103,6 +112,8 @@ def main():
         base = read_verified(args.lag_fix_rom, LAG_FIX_SHA256) if args.lag_fix_rom else source
         edits = (TOURIAN_BRANCH,) + NMI_EDITS if args.nmi_timing else (TOURIAN_BRANCH,)
         target = apply_edits(base, edits)
+        if args.room_fill:
+            optimize_room_fill(source, target)
         with args.output.open("xb") as handle:
             handle.write(encode_bps(source, target))
     except (OSError, ValueError) as error:
