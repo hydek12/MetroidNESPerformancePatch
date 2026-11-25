@@ -96,6 +96,15 @@ At the **START / CONTINUE** menu, hold **Select** and press the slot button. Hol
 
 A slot becomes active when you load it or start from it. **START** and manual **CONTINUE** default to slot A after boot. On death, the active slot receives the password displayed on the game-over screen. Saves restore the same area checkpoint and progression as a manual password. A fresh start has the original starting resources. The emulator or flash cart must persist battery RAM between sessions. On an original NES cartridge, this requires battery-backed hardware.
 
+### Test the save slots on Batocera
+
+1. Copy the patched `.nes` file to `/userdata/roms/nes` and launch it with the FCEUmm core. [Batocera NES setup](https://wiki.batocera.org/systems:nes)
+2. Give Batocera's Hotkey its own button if it currently shares Select. Use the controller buttons mapped to **NES A** and **NES B** for the slot combos. [Batocera hotkey shortcuts](https://wiki.batocera.org/basic_commands)
+3. Start from slot A, make some progress, and let Samus die. Once the password is displayed, exit to the Batocera menu using Hotkey + Start. Relaunch the same ROM and load slot A. Repeat for slot B with different progress so you can tell the saves apart.
+4. Clear one slot at the title menu, then exit and relaunch. The cleared slot should start fresh, and the other slot should still load its saved progress.
+
+This procedure tests the game's battery-backed slots. Begin each check from a fresh launch and keep the ROM filename the same throughout.
+
 ### Gameplay verification
 
 FCEUmm stored and reloaded both slots through its libretro save-RAM interface in separate processes. Both records came from the native death flow, and the displayed passwords matched the stored characters. Slot B used debugger-staged progression for a distinct test checkpoint. The tests covered independent erasure, fresh starts from cleared slots, corrupt character rejection, a manual password with an energy tank and 150 missile capacity, and loading the two built-in passwords.
