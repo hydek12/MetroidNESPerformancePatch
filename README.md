@@ -32,6 +32,23 @@ Apply either output BPS to the clean dump. The combined build inherits upstream 
 
 The first build changes the relative branch operand at CPU address `$DD47`. If a missile drop fails the zero-capacity check at `$DD46`, the branch uses the existing enemy cleanup path at `$DD63` instead of retrying the same Tourian drop indefinitely. Eligible missile drops retain the original path.
 
+## Experimental VBlank and NMI timing build
+
+Add `--nmi-timing` to the combined build command and use a fresh output path. The option needs the pinned lag-fix 1.0 layout. The default outputs remain byte-identical to the first build. The experimental patched ROM SHA-256 is `d04a59f4651d6bec6b25358cd681d44864062cc7b56a2439de1ff2e3a3975eb9`.
+
+The NMI checks the main-loop completion flag before sprite DMA. On a missed update, sprites and background are held together while audio and the age update run on their original schedule. The PPU string writer selects literal or repeated-byte mode once per block. Both modes share the original pointer and scroll tail.
+
+| Replay | Missed updates, first build → candidate | Minimum VBlank margin, CPU cycles |
+| --- | ---: | ---: |
+| Brinstar horizontal | 2 → 2 | 755 → 817 |
+| Ridley-area vertical | 1 → 1 | 31 → 160 |
+| Sustained Kraid | 0 → 0 | 1,331 → 1,337 |
+| Sustained Ridley | 5 → 5 | 581 → 646 |
+
+FCEUmm measured the margin from the last NMI PPU write or sprite DMA completion to the end of VBlank. All profiled NMI video writes finished inside VBlank. Audio and other handler work can continue after VBlank, so full NMI duration is a separate measurement. Main-loop work retains the time before the next NMI. Skipping an unused DMA saves about 524 measured CPU cycles on a missed update.
+
+The four routes matched all 3,350 rendered frames at accepted updates. In the first build six missed frames transferred changed sprite data while the background scroll stayed held. The timing build held the previous rendered frame on all eight misses. The zero-lag target remains open for the three replays that still miss updates. The return addresses pushed by late NMIs include room-building code in work RAM and a sprite placement loop during sustained Ridley combat.
+
 ## Milestones
 
 - [x] Compare the clean ROM with metroid-lag-fix 1.0 using a Kraid replay, one room transition, and a scrolling flip. Record CPU cycles, missed updates, and the relative motion of Samus and the background.
