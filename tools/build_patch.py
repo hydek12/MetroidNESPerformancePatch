@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a BPS patch from a verified Metroid (USA) NES 2.0 dump."""
+"""Create the combined performance BPS for Metroid (USA) NES 2.0."""
 
 import argparse
 import hashlib
@@ -89,40 +89,19 @@ def main():
     parser.add_argument("clean_rom", type=Path, help="verified Metroid (USA) NES 2.0 dump")
     parser.add_argument("output", type=Path, help="new BPS file")
     parser.add_argument(
-        "--lag-fix-rom", type=Path, help="local ROM with upstream lag-fix 1.0 already applied"
-    )
-    parser.add_argument(
-        "--nmi-timing",
-        action="store_true",
-        help="include the experimental NMI and PPU writer timing changes",
-    )
-    parser.add_argument(
-        "--room-fill",
-        action="store_true",
-        help="include the room-buffer initialization optimization",
-    )
-    parser.add_argument(
-        "--prefetch-metatiles",
-        action="store_true",
-        help="reuse the metatile lookup plan already prepared by a room draw",
+        "--lag-fix-rom",
+        type=Path,
+        required=True,
+        help="verified local ROM with upstream lag-fix 1.0 already applied",
     )
     args = parser.parse_args()
-    if args.prefetch_metatiles and not args.room_fill:
-        parser.error("--prefetch-metatiles requires --room-fill")
-    if args.room_fill and not args.nmi_timing:
-        parser.error("--room-fill requires --nmi-timing")
-    if args.nmi_timing and not args.lag_fix_rom:
-        parser.error("--nmi-timing requires --lag-fix-rom")
 
     try:
         source = read_verified(args.clean_rom, CLEAN_SHA256)
-        base = read_verified(args.lag_fix_rom, LAG_FIX_SHA256) if args.lag_fix_rom else source
-        edits = (TOURIAN_BRANCH,) + NMI_EDITS if args.nmi_timing else (TOURIAN_BRANCH,)
-        target = apply_edits(base, edits)
-        if args.room_fill:
-            optimize_room_fill(source, target)
-        if args.prefetch_metatiles:
-            reuse_metatile_plan(source, target)
+        base = read_verified(args.lag_fix_rom, LAG_FIX_SHA256)
+        target = apply_edits(base, (TOURIAN_BRANCH,) + NMI_EDITS)
+        optimize_room_fill(source, target)
+        reuse_metatile_plan(source, target)
         with args.output.open("xb") as handle:
             handle.write(encode_bps(source, target))
     except (OSError, ValueError) as error:
