@@ -123,7 +123,7 @@ A debugger-assisted Brinstar test entered a room with a native tube, saturated i
 
 The boss and vertical tests used matched starting resources to isolate timing from the refill. All 3,350 accepted frames matched the prior patch pixel for pixel. Neither build registered NMI video writes outside VBlank on these routes. The QuickNES Tourian replay used a transferred checkpoint with the new work-RAM routines initialized.
 
-On Batocera, the project owner confirmed that both slots reloaded after exiting to the menu and relaunching the game. They also confirmed that both clear combinations worked and that loading a save restored Samus's full energy. FCEUmm verified that dying after a normal **START** or manual **CONTINUE** left both save records byte-for-byte identical. The normal **START** change still needs a Batocera check. Flash-cart hardware remains untested.
+On Batocera, the project owner confirmed that both slots reloaded after exiting to the menu and relaunching, both clear combinations worked, and loading a save restored Samus's full energy. They also confirmed that normal **START** began a fresh game and that dying left both saves intact. FCEUmm verified that dying after normal **START** or manual **CONTINUE** left both save records byte-for-byte identical. Flash-cart hardware remains untested.
 
 ## Milestones
 
